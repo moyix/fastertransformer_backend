@@ -99,7 +99,7 @@ FetchContent_Declare(
 )
 FetchContent_Declare(
   repo-ft
-  GIT_REPOSITORY https://github.com/NVIDIA/FasterTransformer.git
+  GIT_REPOSITORY https://github.com/moyix/FasterTransformer.git
   GIT_TAG main
   GIT_SHALLOW ON
 )
