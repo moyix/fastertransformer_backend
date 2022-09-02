@@ -61,6 +61,7 @@ ARG FORCE_BACKEND_REBUILD=0
 RUN mkdir build -p && \
     cd build && \
     cmake \
+      -D SM=60,61,70,75,80,86 \
       -D CMAKE_EXPORT_COMPILE_COMMANDS=1 \
       -D CMAKE_BUILD_TYPE=Release \
       -D CMAKE_INSTALL_PREFIX=/opt/tritonserver \
