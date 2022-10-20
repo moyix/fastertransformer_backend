@@ -76,6 +76,7 @@ FROM ${BASE_IMAGE} as server
 ENV NCCL_LAUNCH_MODE=GROUP
 
 COPY --from=server-builder /opt/tritonserver/backends/fastertransformer /opt/tritonserver/backends/fastertransformer
+COPY --from=server-builder /workspace/build/fastertransformer_backend/build/bin/gpt_gemm /workspace/gpt_gemm
 
 # set workspace
 ENV WORKSPACE /workspace
@@ -95,3 +96,4 @@ RUN sed -i 's/#X11UseLocalhost yes/X11UseLocalhost no/g' /etc/ssh/sshd_config
 RUN mkdir /var/run/sshd -p
 
 ADD . /workspace/fastertransformer_backend
+ADD ./docker/tune.py /workspace/tune.py
