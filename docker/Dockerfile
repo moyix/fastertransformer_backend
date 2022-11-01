@@ -97,3 +97,4 @@ RUN mkdir /var/run/sshd -p
 
 ADD . /workspace/fastertransformer_backend
 ADD ./docker/tune.py /workspace/tune.py
+ADD ./docker/model_config_pb2.py /workspace/model_config_pb2.py
