@@ -1,19 +1,4 @@
 # -*- coding: utf-8 -*-
-#  Copyright (c) 2019-2022, NVIDIA CORPORATION.  All rights reserved.
-#  Copyright (c) 2021, NAVER Corp.  Authored by CLOVA.
-
-#  Licensed under the Apache License, Version 2.0 (the "License");
-#  you may not use this file except in compliance with the License.
-#  You may obtain a copy of the License at
-
-#      http://www.apache.org/licenses/LICENSE-2.0
-
-#  Unless required by applicable law or agreed to in writing, software
-#  distributed under the License is distributed on an "AS IS" BASIS,
-#  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-#  See the License for the specific language governing permissions and
-#  limitations under the License.
-
 import csv
 import json
 import numpy as np
@@ -26,7 +11,7 @@ from torch.nn.utils.rnn import pad_sequence
 from word_list import to_word_list_format
 
 # GPT3 Related variables
-# Reference : https://github.com/NVIDIA/FasterTransformer/blob/main/examples/pytorch/gpt/gpt_example.py
+# Reference : https://github.com/NVIDIA/FasterTransformer/blob/main/sample/pytorch/gpt_sample.py
 MERGES_FILE = "gpt2-merges.txt"
 VOCAB_FILE = "gpt2-vocab.json"
 
@@ -42,7 +27,7 @@ class TritonPythonModel:
     def initialize(self, args):
         """`initialize` is called only once when the model is being loaded.
         Implementing `initialize` function is optional. This function allows
-        the model to intialize any state associated with this model.
+        the model to initialize any state associated with this model.
         Parameters
         ----------
         args : dict
@@ -131,7 +116,7 @@ class TritonPythonModel:
             # response:
             #
             # pb_utils.InferenceResponse(
-            #    output_tensors=..., TritonError("An error occured"))
+            #    output_tensors=..., TritonError("An error occurred"))
             inference_response = pb_utils.InferenceResponse(output_tensors=[
                 input_id_tensor,
                 bad_words_ids_tensor,
