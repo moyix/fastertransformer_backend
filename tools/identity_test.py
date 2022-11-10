@@ -58,29 +58,18 @@ FIXED_START_IDS = np.array([
 # ], np.uint32)
 
 
-def prepare_tensor(name, input, protocol):
-    client_util = httpclient if protocol == "http" else grpcclient
+def prepare_tensor(name, input):
     t = client_util.InferInput(
         name, input.shape, np_to_triton_dtype(input.dtype))
     t.set_data_from_numpy(input)
     return t
 
-def create_inference_server_client(protocol, url, concurrency, verbose):
-    client_util = httpclient if protocol == "http" else grpcclient
-    if protocol == "http":
-        return client_util.InferenceServerClient(url,
-                                                concurrency=concurrency,
-                                                verbose=verbose)
-    elif protocol == "grpc":
-        return client_util.InferenceServerClient(url,
-                                                verbose=verbose)
 
 def send_requests(url, batch_size, input_start_ids, input_len, output_len, verbose, flags, request_parallelism=10):
     model_name = "fastertransformer"
-    with create_inference_server_client(flags.protocol,
-                                        url,
-                                        concurrency=request_parallelism,
-                                        verbose=verbose) as client:
+    with client_util.InferenceServerClient(url,
+                                           concurrency=request_parallelism,
+                                           verbose=verbose) as client:
         requests = []
         results = []
 
@@ -97,7 +86,7 @@ def send_requests(url, batch_size, input_start_ids, input_len, output_len, verbo
         repetition_penalty = 1.0 * \
             np.ones([input_start_ids.shape[0], 1]).astype(np.float32)
         random_seed = 0 * \
-            np.ones([input_start_ids.shape[0], 1]).astype(np.uint64)
+            np.ones([input_start_ids.shape[0], 1]).astype(np.int32)
         is_return_log_probs = True * \
             np.ones([input_start_ids.shape[0], 1]).astype(np.bool)
         beam_width = (flags.beam_width *
@@ -113,23 +102,23 @@ def send_requests(url, batch_size, input_start_ids, input_len, output_len, verbo
         for i in range(request_parallelism):
             input_data = input_start_ids
             inputs = [
-                prepare_tensor("input_ids", input_data, flags.protocol),
-                prepare_tensor("input_lengths", input_len, flags.protocol),
-                prepare_tensor("request_output_len", output_len, flags.protocol),
-                prepare_tensor("runtime_top_k", runtime_top_k, flags.protocol),
-                prepare_tensor("runtime_top_p", runtime_top_p, flags.protocol),
+                prepare_tensor("input_ids", input_data),
+                prepare_tensor("input_lengths", input_len),
+                prepare_tensor("request_output_len", output_len),
+                prepare_tensor("runtime_top_k", runtime_top_k),
+                prepare_tensor("runtime_top_p", runtime_top_p),
                 prepare_tensor("beam_search_diversity_rate",
-                               beam_search_diversity_rate, flags.protocol),
-                prepare_tensor("temperature", temperature, flags.protocol),
-                prepare_tensor("len_penalty", len_penalty, flags.protocol),
-                prepare_tensor("repetition_penalty", repetition_penalty, flags.protocol),
-                prepare_tensor("random_seed", random_seed, flags.protocol),
-                prepare_tensor("is_return_log_probs", is_return_log_probs, flags.protocol),
-                prepare_tensor("beam_width", beam_width, flags.protocol),
-                prepare_tensor("start_id", start_ids, flags.protocol),
-                prepare_tensor("end_id", end_ids, flags.protocol),
-                prepare_tensor("bad_words_list", bad_words_list, flags.protocol),
-                prepare_tensor("stop_words_list", stop_word_list, flags.protocol),
+                               beam_search_diversity_rate),
+                prepare_tensor("temperature", temperature),
+                prepare_tensor("len_penalty", len_penalty),
+                prepare_tensor("repetition_penalty", repetition_penalty),
+                prepare_tensor("random_seed", random_seed),
+                prepare_tensor("is_return_log_probs", is_return_log_probs),
+                prepare_tensor("beam_width", beam_width),
+                prepare_tensor("start_id", start_ids),
+                prepare_tensor("end_id", end_ids),
+                prepare_tensor("bad_words_list", bad_words_list),
+                prepare_tensor("stop_words_list", stop_word_list),
             ]
 
             print("set request")
@@ -230,7 +219,7 @@ if __name__ == '__main__':
                         type=int,
                         default=1,
                         required=False,
-                        help="Specify number of runs to get the average latency"
+                        help="Spedifty number of runs to get the average latency"
                         )
 
     FLAGS = parser.parse_args()
@@ -238,6 +227,8 @@ if __name__ == '__main__':
         print("unexpected protocol \"{}\", expects \"http\" or \"grpc\"".format(
             FLAGS.protocol))
         exit(1)
+
+    client_util = httpclient if FLAGS.protocol == "http" else grpcclient
 
     if FLAGS.url is None:
         FLAGS.url = "localhost:8000" if FLAGS.protocol == "http" else "localhost:8001"
@@ -259,7 +250,7 @@ if __name__ == '__main__':
     # protocol anyway.
 
     # warm up
-    if FLAGS.warm_up:
+    if FLAGS.protocol == "http" and FLAGS.warm_up:
         print("[INFO] sending requests to warm up")
         send_requests(FLAGS.url, FLAGS.batch_size, input_start_ids, input_len,
                       output_len, FLAGS.verbose, FLAGS, request_parallelism=2)
@@ -270,8 +261,9 @@ if __name__ == '__main__':
     latencies = []
     for i in range(FLAGS.num_runs):
         start_time = datetime.now()
-        send_requests(FLAGS.url, FLAGS.batch_size, input_start_ids,
-                      input_len, output_len, FLAGS.verbose, FLAGS, request_parallelism)
+        if FLAGS.protocol == "http":
+            send_requests(FLAGS.url, FLAGS.batch_size, input_start_ids,
+                          input_len, output_len, FLAGS.verbose, FLAGS, request_parallelism)
         stop_time = datetime.now()
         latencies.append((stop_time - start_time).total_seconds()
                          * 1000.0 / request_parallelism)

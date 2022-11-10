@@ -1,4 +1,4 @@
-# Copyright (c) 2021-2022, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2021-2202, NVIDIA CORPORATION. All rights reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,16 +23,10 @@ ARG TRITON_VERSION=22.06
 ARG BASE_IMAGE=nvcr.io/nvidia/tritonserver:${TRITON_VERSION}-py3
 FROM ${BASE_IMAGE} as server-builder
 
-RUN apt-key del 7fa2af80 && \
-    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2004/x86_64/3bf863cc.pub && \
-    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/machine-learning/repos/ubuntu2004/x86_64/7fa2af80.pub && \
-    apt-get update && \
-    apt-get install -y --no-install-recommends openssh-server zsh tmux mosh locales-all clangd sudo \
-        zip unzip wget build-essential autoconf autogen gdb python3.8 python3-pip python3-dev rapidjson-dev \
-        xz-utils zstd libz-dev && \
-    pip3 install torch==1.9.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html  && \
-    pip3 install --extra-index-url https://pypi.ngc.nvidia.com regex fire tritonclient[all] && \
-    pip3 install transformers huggingface_hub tokenizers SentencePiece sacrebleu && \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    zip unzip wget build-essential autoconf autogen gdb \
+    python3.8 python3-pip python3-dev rapidjson-dev && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -77,6 +71,8 @@ RUN mkdir build -p && \
       .. && \
     make -j"$(grep -c ^processor /proc/cpuinfo)" install
 
+FROM ${BASE_IMAGE} as server
+
 ENV NCCL_LAUNCH_MODE=GROUP
 
 COPY --from=server-builder /opt/tritonserver/backends/fastertransformer /opt/tritonserver/backends/fastertransformer
@@ -85,6 +81,16 @@ COPY --from=server-builder /workspace/build/fastertransformer_backend/build/bin/
 # set workspace
 ENV WORKSPACE /workspace
 WORKDIR /workspace
+
+# Install pytorch
+RUN pip3 install torch==1.9.1+cu111 -f https://download.pytorch.org/whl/torch_stable.html  && \
+    pip3 install --extra-index-url https://pypi.ngc.nvidia.com regex fire tritonclient[all]
+
+# for debug
+RUN apt-get update -q && \
+    apt-get install -y --no-install-recommends openssh-server zsh tmux mosh locales-all clangd sudo && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
 
 RUN sed -i 's/#X11UseLocalhost yes/X11UseLocalhost no/g' /etc/ssh/sshd_config
 RUN mkdir /var/run/sshd -p
